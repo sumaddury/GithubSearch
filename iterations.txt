@@ -1,0 +1,11 @@
+Iteration 1
+- Added Docker Compose stack for api, worker, postgres, meilisearch, and web.
+- Added .env.example with GitHub token, Postgres DSN, and Meilisearch config.
+- Created FastAPI scaffold with search endpoint and placeholders for ingest/status/item lookup.
+- Added Meilisearch search helper and SQLAlchemy session setup.
+- Implemented worker ingestion pipeline for repos/issues/comments with text normalization and Meilisearch indexing.
+- Added Postgres schema migration for repository, issue, and comment tables.
+- Added minimal React UI scaffold for repo + query input and result display.
+Iteration 2
+- Implemented item lookup endpoint for issues and comments by id.
+- Implemented status endpoint to report last ingestion time and counts.
