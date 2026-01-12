@@ -1,0 +1,16 @@
+GitHub Issues Search Engine
+
+Objective
+Build a web app that lets users enter a GitHub repo and an issue description, then returns relevant issues/PRs/comments. The system ingests GitHub data, normalizes text, stores metadata in Postgres, and uses Meilisearch for fast lexical retrieval. A FastAPI backend serves REST endpoints, a worker handles ingestion, and a React frontend provides the UI. The stack is containerized with Docker Compose for local development.
+
+Success criteria
+- User can search a repo by description and get relevant results with links.
+- Ingestion worker paginates GitHub REST API, handles rate limits, and stores normalized data.
+- Meilisearch index is updated from stored data and queried via API.
+- REST endpoints cover index, query, and detail views.
+- Docker Compose brings up API, worker, Postgres, and Meilisearch reliably.
+
+Non-goals
+- Advanced semantic search/embeddings (stick to lexical retrieval).
+- Multi-tenant auth or billing.
+- Production-grade deployment automation.

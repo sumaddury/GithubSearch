@@ -1,0 +1,36 @@
+Project Structure (planned)
+
+/
+  api/
+    app/               FastAPI app (routers, schemas, deps, config)
+    tests/             API tests
+    Dockerfile
+  worker/
+    app/               Ingestion and indexing worker
+    tests/             Worker tests
+    Dockerfile
+  web/
+    src/               React UI
+    public/
+    Dockerfile
+  db/
+    migrations/        SQL migrations
+    seeds/             Optional seed data
+  docker-compose.yml
+  .env.example
+  README.md
+  objective.txt
+  structure.txt
+
+Key services
+- Postgres: normalized issue/PR/comment metadata storage
+- Meilisearch: lexical search index
+- API: REST endpoints for indexing, querying, and viewing results
+- Worker: GitHub ingestion + normalization + Meilisearch sync
+
+Data flow
+1) User submits repo + description in UI.
+2) API checks index status and triggers or reports ingestion if needed.
+3) Worker paginates GitHub REST API and stores metadata in Postgres.
+4) Worker updates Meilisearch index from Postgres.
+5) API queries Meilisearch and returns ranked results.
