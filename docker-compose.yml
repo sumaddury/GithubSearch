@@ -1,0 +1,57 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: githubsearch
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.6
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_API_KEY:-masterKey}
+      MEILI_NO_ANALYTICS: "true"
+    ports:
+      - "7700:7700"
+    volumes:
+      - meili:/meili_data
+
+  api:
+    build: ./api
+    environment:
+      POSTGRES_DSN: ${POSTGRES_DSN}
+      MEILI_HOST: ${MEILI_HOST}
+      MEILI_API_KEY: ${MEILI_API_KEY}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - meilisearch
+
+  worker:
+    build: ./worker
+    environment:
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      POSTGRES_DSN: ${POSTGRES_DSN}
+      MEILI_HOST: ${MEILI_HOST}
+      MEILI_API_KEY: ${MEILI_API_KEY}
+    depends_on:
+      - postgres
+      - meilisearch
+
+  web:
+    build: ./web
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  meili:

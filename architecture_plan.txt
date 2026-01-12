@@ -1,0 +1,110 @@
+GitHub Issues Search Engine - Detailed Architecture Plan
+
+Scope and assumptions
+- Single-user hobby project; no auth, no multi-tenant concerns.
+- Public repos only; user provides owner/repo or GitHub URL.
+- Core sources: issues + PRs + comments. Optional: discussions and commits if easy later.
+- Return top 10 ranked results with links back to GitHub.
+
+High-level components
+1) Web UI (React + Vite)
+2) API (FastAPI)
+3) Worker (Python process)
+4) Postgres (storage)
+5) Meilisearch (index + query)
+6) Docker Compose (local dev)
+
+Data model (Postgres)
+- repository
+  - id (github repo id)
+  - owner, name, full_name
+  - html_url
+  - default_branch
+  - last_ingested_at
+  - last_cursor (for pagination/since)
+- issue
+  - id (github issue id)
+  - repo_id (FK)
+  - number
+  - title, body
+  - state, labels (text array), author
+  - is_pull_request (bool)
+  - comments_count
+  - created_at, updated_at
+  - html_url
+- comment
+  - id (github comment id)
+  - issue_id (FK)
+  - repo_id (FK)
+  - body, author
+  - created_at, updated_at
+  - html_url
+
+Index model (Meilisearch)
+- One index: "github_items"
+- Documents for issues and comments (and PRs as issues with flag)
+- Fields:
+  - id (unique: "issue:123" or "comment:456")
+  - repo_full_name
+  - type (issue | pr | comment)
+  - title (issues/PRs only)
+  - body
+  - labels
+  - author
+  - created_at
+  - html_url
+  - issue_number (for comments)
+- Ranking:
+  - Meilisearch default + boost recency via sortable field (created_at)
+  - Optionally use "title" as higher priority than "body"
+
+Ingestion flow
+1) User submits repo + description in UI.
+2) API checks repo in Postgres:
+   - if missing or stale, enqueue/trigger ingest
+3) Worker uses GitHub REST API:
+   - /repos/{owner}/{repo}
+   - /issues?state=all&since=last_ingested_at&per_page=100
+   - /issues/{number}/comments?per_page=100
+4) Normalize text:
+   - strip markdown code blocks and URLs (lightweight)
+   - keep title/body/plain text
+5) Upsert into Postgres.
+6) Index into Meilisearch in batches.
+
+Rate limiting strategy
+- Use conditional requests with ETag if convenient.
+- Track X-RateLimit-Remaining and X-RateLimit-Reset; sleep until reset when needed.
+- For a hobby project, a single token is acceptable; fall back to unauthenticated (lower limits).
+
+API endpoints (REST)
+- GET /search?repo=owner/repo&q=...&type=issue|pr|comment
+  - Returns top 10 results, plus total hits.
+- GET /items/{id}
+  - Fetch from Postgres for detail view.
+- POST /ingest
+  - Body: { repo: "owner/repo" }
+  - Triggers worker ingest (simple in-process or background task).
+- GET /status?repo=owner/repo
+  - Last ingest timestamp and count stats.
+
+Worker design
+- Simple Python process; can be triggered by API or run on schedule.
+- Separate module for GitHub client, pagination, and normalization.
+- Uses upsert to avoid duplicates.
+
+Frontend UI
+- Input: repo name or URL, issue description
+- Submit triggers search; show loading and results.
+- Result card: title, type, labels, snippet, created date, link.
+- Optional filter: issue/PR/comment.
+
+Docker Compose
+- Services: api, worker, postgres, meilisearch, web
+- .env for GitHub token, DB creds, Meilisearch key
+- Local dev instructions in README
+
+Phasing
+1) MVP: issues + comments; manual ingest.
+2) Add PRs (already part of issues with is_pull_request flag).
+3) Add discussions/commits only if needed.
